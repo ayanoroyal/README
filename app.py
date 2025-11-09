@@ -1,46 +1,41 @@
 import streamlit as st
-import pandas as pd
-from io import BytesIO
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+import pickle
+import os
 
-st.header("CSV Cleaner 🧹")
+st.header("Sentiment Analyzer 😊😞")
 
-st.write("Upload apni CSV file, main usse clean kar dunga!")
+st.write("Enter a review aur dekho positive hai ya negative!")
 
-file = st.file_uploader("Choose CSV file", type=["csv"])
+# Simple training data (replace with real dataset later)
+reviews = [
+    "This product is amazing! Love it", "Excellent quality, highly recommend",
+    "Great service, very happy", "Worst experience ever", "Terrible product",
+    "Don't recommend, waste of money"
+]
+sentiments = [1, 1, 1, 0, 0, 0]  # 1 = positive, 0 = negative
 
-if file:
-    df = pd.read_csv(file)
-    
-    st.write("**Original Data:**")
-    st.write(f"Rows: {len(df)}, Columns: {len(df.columns)}")
-    st.dataframe(df.head())
-    
-    st.write("---")
-    st.write("**Cleaning...**")
-    
-    # Remove duplicates
-    df_cleaned = df.drop_duplicates()
-    st.write(f"✓ Removed duplicates: {len(df) - len(df_cleaned)} rows deleted")
-    
-    # Remove empty rows
-    df_cleaned = df_cleaned.dropna()
-    st.write(f"✓ Removed empty cells")
-    
-    st.write("---")
-    st.write("**Cleaned Data:**")
-    st.write(f"Rows: {len(df_cleaned)}, Columns: {len(df_cleaned.columns)}")
-    st.dataframe(df_cleaned.head())
-    
-    # Download button
-    buf = BytesIO()
-    df_cleaned.to_csv(buf, index=False)
-    buf.seek(0)
-    
-    st.download_button(
-        label="📥 Download Cleaned CSV",
-        data=buf.getvalue(),
-        file_name="cleaned_data.csv",
-        mime="text/csv"
-    )
+# Train model
+vec = TfidfVectorizer()
+X = vec.fit_transform(reviews)
+model = MultinomialNB()
+model.fit(X, sentiments)
+
+# User input
+user_review = st.text_area("Write a review:", placeholder="Type something...")
+
+if st.button("Analyze"):
+    if user_review.strip():
+        X_user = vec.transform([user_review])
+        prediction = model.predict(X_user)[0]
+        confidence = model.predict_proba(X_user)[0]
+        
+        if prediction == 1:
+            st.success(f"✅ POSITIVE ({confidence[1]:.0%} confidence)")
+        else:
+            st.error(f"❌ NEGATIVE ({confidence[0]:.0%} confidence)")
+    else:
+        st.warning("Please enter a review first!")
 else:
-    st.info("👆 Upar CSV upload karo start karne ke liye")
+    st.info("👆 Type a review and click 'Analyze'")
